@@ -1,0 +1,60 @@
+[{
+  "_id": {
+    "$oid": "69d159e9174f51baf59c8146"
+  },
+  "name": "White T-Shirt",
+  "price": 19.99,
+  "category": "Fashion",
+  "image": "image/tshirt.png",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69d159e9174f51baf59c8147"
+  },
+  "name": "Headphones",
+  "price": 59.99,
+  "category": "Electronics",
+  "image": "image/headphone.webp",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69d159e9174f51baf59c8148"
+  },
+  "name": "Desk Lamp",
+  "price": 29.99,
+  "category": "Home",
+  "image": "image/desk-lamp.jpeg",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69d159e9174f51baf59c8149"
+  },
+  "name": "Face Cream",
+  "price": 24.99,
+  "category": "Beauty",
+  "image": "image/face-cream.jpeg",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69d159e9174f51baf59c814a"
+  },
+  "name": "Blue Jeans",
+  "price": 45.99,
+  "category": "Fashion",
+  "image": "image/blue-jeans.webp",
+  "__v": 0
+},
+{
+  "_id": {
+    "$oid": "69d159e9174f51baf59c814b"
+  },
+  "name": "Coffee Mug",
+  "price": 12.99,
+  "category": "Home",
+  "image": "image/mug.webp",
+  "__v": 0
+}]
