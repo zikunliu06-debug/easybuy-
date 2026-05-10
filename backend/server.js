@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const User = require("./models/User");
 const Product = require("./models/Product");
@@ -9,6 +10,7 @@ const Cart = require("./models/Cart");
 
 const app = express();
 const PORT = 3000;
+const JWT_SECRET = "easybuy_secret_key";
 
 app.use(cors());
 app.use(express.json());
@@ -34,6 +36,33 @@ async function createDefaultAdmin() {
 
     console.log("Default admin created ✅");
   }
+}
+
+// JWT middleware
+function verifyToken(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: "Invalid token" });
+  }
+}
+
+function verifyAdmin(req, res, next) {
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ error: "Admin access required" });
+  }
+
+  next();
 }
 
 app.get("/", (req, res) => {
@@ -175,8 +204,19 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Wrong password" });
     }
 
+    const token = jwt.sign(
+      {
+        id: user._id,
+        username: user.username,
+        role: user.role
+      },
+      JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
     res.json({
       message: "Login success",
+      token,
       user: {
         _id: user._id,
         username: user.username,
@@ -188,7 +228,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.get("/admin/users", async (req, res) => {
+app.get("/admin/users", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const users = await User.find().select("-password");
     res.json(users);
@@ -197,7 +237,7 @@ app.get("/admin/users", async (req, res) => {
   }
 });
 
-app.get("/admin/carts", async (req, res) => {
+app.get("/admin/carts", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const carts = await Cart.find();
     res.json(carts);
