@@ -11,6 +11,25 @@ function Toast({ message }) {
   );
 }
 
+function ConfirmDialog({ show, itemName, onConfirm, onCancel }) {
+  if (!show) return null;
+  return (
+    <div className="dialog-overlay" onClick={onCancel}>
+      <div className="dialog-box" onClick={(e) => e.stopPropagation()}>
+        <div className="dialog-icon">🗑</div>
+        <h3 className="dialog-title">Remove Item</h3>
+        <p className="dialog-msg">
+          Remove <strong>{itemName}</strong> from your cart?
+        </p>
+        <div className="dialog-btns">
+          <button className="dialog-btn-cancel" onClick={onCancel}>Cancel</button>
+          <button className="dialog-btn-confirm" onClick={onConfirm}>Remove</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
   return (
     <nav className="navbar">
@@ -201,7 +220,21 @@ function ShopPage({ products, searchText, onSearchChange, onAddToCart, user }) {
 }
 
 function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
+  const [confirmItem, setConfirmItem] = useState(null); // { _id, name }
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  const handleRemoveClick = (item) => {
+    setConfirmItem(item);
+  };
+
+  const handleConfirm = () => {
+    onRemove(confirmItem._id);
+    setConfirmItem(null);
+  };
+
+  const handleCancel = () => {
+    setConfirmItem(null);
+  };
 
   if (cart.length === 0) {
     return (
@@ -217,6 +250,12 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
 
   return (
     <div className="page">
+      <ConfirmDialog
+        show={!!confirmItem}
+        itemName={confirmItem?.name}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
       <h2>Your Cart</h2>
       <div className="cart-list">
         {cart.map((item) => (
@@ -233,7 +272,7 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
             <p className="cart-item-subtotal">
               ${(item.price * item.quantity).toFixed(2)}
             </p>
-            <button className="btn-remove" onClick={() => onRemove(item._id)}>
+            <button className="btn-remove" onClick={() => handleRemoveClick(item)}>
               🗑
             </button>
           </div>
