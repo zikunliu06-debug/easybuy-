@@ -104,16 +104,27 @@ function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
 }
 
 // ─── LoginPage ─────────────────────────────────────────────────────────────────
-// Handles both login and registration from the same form.
+// Two separate tabs: Login and Register, toggled by `authMode` state.
+// - Switching tabs clears all inputs and errors for a clean experience.
 // - Inline error messages replace browser alert() for better UX.
-// - Enter key triggers login for faster interaction.
-// - Validation runs client-side before making any API call.
+// - Enter key submits the current active tab's form.
 function LoginPage({ onLogin, onRegister, toast }) {
+  // "login" | "register" — controls which tab is active
+  const [authMode, setAuthMode] = useState("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
 
-  // Validates fields before calling the parent login handler
+  // Clears all fields and errors when switching between tabs
+  const switchMode = (mode) => {
+    setAuthMode(mode);
+    setUsername("");
+    setPassword("");
+    setConfirmPassword("");
+    setError("");
+  };
+
   const handleLogin = async () => {
     if (!username || !password) {
       setError("Please fill in all fields.");
@@ -123,26 +134,50 @@ function LoginPage({ onLogin, onRegister, toast }) {
     await onLogin(username, password);
   };
 
-  // Validates fields before calling the parent register handler
   const handleRegister = async () => {
-    if (!username || !password) {
+    if (!username || !password || !confirmPassword) {
       setError("Please fill in all fields.");
       return;
     }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setError("");
     await onRegister(username, password);
   };
 
+  const isLogin = authMode === "login";
+
   return (
     <div className="auth-page">
       <div className="auth-card">
+        {/* Logo header */}
         <div className="auth-header">
           <span className="auth-logo">🛍</span>
           <h1>EasyBuy</h1>
-          <p className="auth-subtitle">Sign in to start shopping</p>
+          <p className="auth-subtitle">Your everyday shopping destination</p>
+        </div>
+
+        {/* Tab switcher — Login / Register */}
+        <div className="auth-tabs">
+          <button
+            className={`auth-tab ${isLogin ? "active" : ""}`}
+            onClick={() => switchMode("login")}
+          >
+            Login
+          </button>
+          <button
+            className={`auth-tab ${!isLogin ? "active" : ""}`}
+            onClick={() => switchMode("register")}
+          >
+            Register
+          </button>
         </div>
 
         <div className="auth-form">
+          {/* Username field — shared by both modes */}
           <div className="form-group">
             <label>Username</label>
             <input
@@ -150,9 +185,11 @@ function LoginPage({ onLogin, onRegister, toast }) {
               placeholder="Enter your username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              onKeyDown={(e) => e.key === "Enter" && (isLogin ? handleLogin() : handleRegister())}
             />
           </div>
+
+          {/* Password field */}
           <div className="form-group">
             <label>Password</label>
             <input
@@ -160,25 +197,51 @@ function LoginPage({ onLogin, onRegister, toast }) {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+              onKeyDown={(e) => e.key === "Enter" && (isLogin ? handleLogin() : handleRegister())}
             />
           </div>
 
-          {/* Inline error shown below inputs instead of using alert() */}
+          {/* Confirm password — only shown in Register mode */}
+          {!isLogin && (
+            <div className="form-group">
+              <label>Confirm Password</label>
+              <input
+                type="password"
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+              />
+            </div>
+          )}
+
+          {/* Inline validation error */}
           {error && <p className="inline-error">{error}</p>}
 
-          <div className="auth-btns">
-            <button className="btn-primary" onClick={handleLogin}>
-              Login
-            </button>
-            <button className="btn-secondary" onClick={handleRegister}>
-              Register
-            </button>
-          </div>
+          {/* Single action button changes label based on active tab */}
+          <button
+            className="btn-primary btn-full"
+            onClick={isLogin ? handleLogin : handleRegister}
+          >
+            {isLogin ? "Sign In" : "Create Account"}
+          </button>
 
-          <p className="demo-hint">
-            Demo admin: <code>admin / Admin123!</code>
+          {/* Switch mode hint at the bottom */}
+          <p className="auth-switch">
+            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            <span
+              className="auth-switch-link"
+              onClick={() => switchMode(isLogin ? "register" : "login")}
+            >
+              {isLogin ? "Register here" : "Sign in"}
+            </span>
           </p>
+
+          {isLogin && (
+            <p className="demo-hint">
+              Demo admin: <code>admin / Admin123!</code>
+            </p>
+          )}
         </div>
       </div>
       <Toast message={toast} />
