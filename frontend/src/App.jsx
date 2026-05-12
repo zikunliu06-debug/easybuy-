@@ -1,8 +1,30 @@
+/**
+ * App.jsx — EasyBuy Frontend
+ * Author: Zikun Liu
+ *
+ * Single-page e-commerce application built with React.
+ * Supports two roles: regular user (shop + cart) and admin (dashboard).
+ * Authentication is handled via JWT stored in localStorage.
+ *
+ * Component structure:
+ *   App                  — root component, manages global state and API calls
+ *   ├── LoginPage        — register / login form with inline validation
+ *   ├── Navbar           — sticky top bar with tab navigation and cart badge
+ *   ├── ShopPage         — product grid with live search + category filter
+ *   │   ├── ProductCard  — individual product card with star rating
+ *   │   └── StarRating   — renders star icons based on a numeric rating
+ *   ├── CartPage         — user's cart with quantity controls and total
+ *   │   └── ConfirmDialog — modal confirmation before removing an item
+ *   ├── AdminPage        — admin-only dashboard: all users + all carts
+ *   └── Toast            — transient bottom-right notification
+ */
+
 import { useEffect, useState } from "react";
 import "./App.css";
 
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
+// ─── Toast ─────────────────────────────────────────────────────────────────────
+// Displays a brief notification at the bottom-right of the screen.
+// Visibility is controlled by whether `message` is non-empty.
 function Toast({ message }) {
   return (
     <div className={`toast ${message ? "show" : ""}`}>
@@ -11,10 +33,14 @@ function Toast({ message }) {
   );
 }
 
+// ─── ConfirmDialog ─────────────────────────────────────────────────────────────
+// Custom modal that replaces window.confirm() for cart item removal.
+// Clicking the overlay background also cancels the action (UX best practice).
 function ConfirmDialog({ show, itemName, onConfirm, onCancel }) {
   if (!show) return null;
   return (
     <div className="dialog-overlay" onClick={onCancel}>
+      {/* stopPropagation prevents clicks inside the box from closing it */}
       <div className="dialog-box" onClick={(e) => e.stopPropagation()}>
         <div className="dialog-icon">🗑</div>
         <h3 className="dialog-title">Remove Item</h3>
@@ -30,6 +56,11 @@ function ConfirmDialog({ show, itemName, onConfirm, onCancel }) {
   );
 }
 
+// ─── Navbar ────────────────────────────────────────────────────────────────────
+// Sticky top navigation bar.
+// - Shows Shop/Cart tabs only for regular users (not admin).
+// - Cart badge displays total item quantity when > 0.
+// - Role icon differentiates admin (👑) from regular user (👤).
 function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
   return (
     <nav className="navbar">
@@ -37,6 +68,8 @@ function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
         <span className="logo-icon">🛍</span>
         EasyBuy
       </div>
+
+      {/* Tab navigation — hidden for admin since they use the dashboard */}
       {user && user.role !== "admin" && (
         <div className="navbar-tabs">
           <button
@@ -50,10 +83,12 @@ function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
             onClick={() => onTabChange("cart")}
           >
             Cart
+            {/* Badge shows total quantity across all cart items */}
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </button>
         </div>
       )}
+
       {user && (
         <div className="navbar-right">
           <span className="welcome-text">
@@ -68,11 +103,17 @@ function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
   );
 }
 
+// ─── LoginPage ─────────────────────────────────────────────────────────────────
+// Handles both login and registration from the same form.
+// - Inline error messages replace browser alert() for better UX.
+// - Enter key triggers login for faster interaction.
+// - Validation runs client-side before making any API call.
 function LoginPage({ onLogin, onRegister, toast }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  // Validates fields before calling the parent login handler
   const handleLogin = async () => {
     if (!username || !password) {
       setError("Please fill in all fields.");
@@ -82,6 +123,7 @@ function LoginPage({ onLogin, onRegister, toast }) {
     await onLogin(username, password);
   };
 
+  // Validates fields before calling the parent register handler
   const handleRegister = async () => {
     if (!username || !password) {
       setError("Please fill in all fields.");
@@ -122,6 +164,7 @@ function LoginPage({ onLogin, onRegister, toast }) {
             />
           </div>
 
+          {/* Inline error shown below inputs instead of using alert() */}
           {error && <p className="inline-error">{error}</p>}
 
           <div className="auth-btns">
@@ -143,9 +186,40 @@ function LoginPage({ onLogin, onRegister, toast }) {
   );
 }
 
+// ─── StarRating helpers ────────────────────────────────────────────────────────
+
+// Derives a consistent pseudo-random rating from the product's MongoDB _id.
+// Uses the last character's char code to pick from a fixed array of ratings.
+// This avoids needing a real ratings field in the database.
+function getStarRating(id) {
+  const stars = [4.2, 4.5, 4.7, 4.3, 4.8, 4.1, 4.6, 4.4];
+  const index = id ? id.charCodeAt(id.length - 1) % stars.length : 0;
+  return stars[index];
+}
+
+// Renders filled (★), half (½), and empty (☆) star characters.
+function StarRating({ rating }) {
+  const full = Math.floor(rating);
+  const half = rating % 1 >= 0.4;
+  return (
+    <div className="star-row">
+      <span className="stars">
+        {"★".repeat(full)}{half ? "½" : ""}{"☆".repeat(5 - full - (half ? 1 : 0))}
+      </span>
+      <span className="star-num">{rating.toFixed(1)}</span>
+    </div>
+  );
+}
+
+// ─── ProductCard ───────────────────────────────────────────────────────────────
+// Displays a single product with image, category badge, name, rating, and price.
+// - useState `added` gives visual feedback when item is added to cart.
+// - "Add to Cart" button is only shown to logged-in users.
 function ProductCard({ product, onAddToCart, loggedIn }) {
   const [added, setAdded] = useState(false);
+  const rating = getStarRating(product._id);
 
+  // Triggers add-to-cart and temporarily shows a "Added!" confirmation state
   const handleAdd = () => {
     onAddToCart(product);
     setAdded(true);
@@ -156,9 +230,12 @@ function ProductCard({ product, onAddToCart, loggedIn }) {
     <div className="product-card">
       <div className="product-img-wrap">
         <img src={product.image} alt={product.name} className="product-img" />
+        {/* Category badge overlaid on the product image */}
+        <span className="category-badge">{product.category}</span>
       </div>
       <div className="product-info">
         <h3 className="product-name">{product.name}</h3>
+        <StarRating rating={rating} />
         <p className="product-price">${product.price.toFixed(2)}</p>
         {loggedIn && (
           <button
@@ -173,15 +250,49 @@ function ProductCard({ product, onAddToCart, loggedIn }) {
   );
 }
 
+// Available product categories — "All" is a virtual option that shows everything
+const CATEGORIES = ["All", "Fashion", "Electronics", "Home", "Beauty"];
+
+// ─── ShopPage ──────────────────────────────────────────────────────────────────
+// Main shopping page with hero banner, category tabs, live search, and product grid.
+// Filtering combines both search text and category simultaneously (AND logic).
 function ShopPage({ products, searchText, onSearchChange, onAddToCart, user }) {
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(searchText.toLowerCase())
-  );
+  // Category filter state — defaults to "All" (show everything)
+  const [activeCategory, setActiveCategory] = useState("All");
+
+  // Combined filter: product must match both the search text AND the selected category
+  const filtered = products.filter((p) => {
+    const matchSearch = p.name.toLowerCase().includes(searchText.toLowerCase());
+    const matchCategory = activeCategory === "All" || p.category === activeCategory;
+    return matchSearch && matchCategory;
+  });
 
   return (
     <div className="page">
-      <div className="shop-header">
-        <h2>All Products</h2>
+      {/* Hero banner — decorative welcome section at the top of the shop */}
+      <div className="hero-banner">
+        <div className="hero-content">
+          <p className="hero-sub">Welcome to</p>
+          <h1 className="hero-title">EasyBuy 🛍</h1>
+          <p className="hero-desc">Discover quality products at great prices</p>
+        </div>
+      </div>
+
+      {/* Controls row: category filter tabs (left) + search bar (right) */}
+      <div className="shop-controls">
+        <div className="category-tabs">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              className={`cat-btn ${activeCategory === cat ? "active" : ""}`}
+              onClick={() => setActiveCategory(cat)}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Live search — filters in real-time on every keystroke via onChange */}
         <div className="search-wrap">
           <span className="search-icon">🔍</span>
           <input
@@ -190,18 +301,24 @@ function ShopPage({ products, searchText, onSearchChange, onAddToCart, user }) {
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
           />
+          {/* Clear button only appears when there is text in the search input */}
           {searchText && (
-            <button className="search-clear" onClick={() => onSearchChange("")}>
-              ✕
-            </button>
+            <button className="search-clear" onClick={() => onSearchChange("")}>✕</button>
           )}
         </div>
       </div>
 
+      {/* Dynamic result count updates as filters change */}
+      <p className="results-count">
+        {filtered.length} product{filtered.length !== 1 ? "s" : ""} found
+        {activeCategory !== "All" ? ` in ${activeCategory}` : ""}
+        {searchText ? ` for "${searchText}"` : ""}
+      </p>
+
       {filtered.length === 0 ? (
         <div className="empty-state">
           <span>🔎</span>
-          <p>No products found for "{searchText}"</p>
+          <p>No products found. Try a different search or category.</p>
         </div>
       ) : (
         <div className="product-grid">
@@ -219,19 +336,29 @@ function ShopPage({ products, searchText, onSearchChange, onAddToCart, user }) {
   );
 }
 
+// ─── CartPage ──────────────────────────────────────────────────────────────────
+// Displays the current user's cart items with quantity controls and total price.
+// - Uses local state `confirmItem` to track which item is pending deletion.
+// - Replaces browser confirm() with a custom ConfirmDialog component.
 function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
-  const [confirmItem, setConfirmItem] = useState(null); // { _id, name }
+  // Stores the item the user clicked "remove" on — null means dialog is closed
+  const [confirmItem, setConfirmItem] = useState(null);
+
+  // Calculates total price by summing price * quantity for all cart items
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  // Opens the confirm dialog with the selected item's details
   const handleRemoveClick = (item) => {
     setConfirmItem(item);
   };
 
+  // Called when user confirms removal in the dialog
   const handleConfirm = () => {
     onRemove(confirmItem._id);
     setConfirmItem(null);
   };
 
+  // Called when user cancels — closes dialog without any action
   const handleCancel = () => {
     setConfirmItem(null);
   };
@@ -250,6 +377,7 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
 
   return (
     <div className="page">
+      {/* Confirm dialog — rendered conditionally based on confirmItem state */}
       <ConfirmDialog
         show={!!confirmItem}
         itemName={confirmItem?.name}
@@ -264,11 +392,13 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
               <p className="cart-item-name">{item.name}</p>
               <p className="cart-item-unit">${item.price.toFixed(2)} each</p>
             </div>
+            {/* Quantity controls: decrease / display / increase */}
             <div className="cart-controls">
               <button className="qty-btn" onClick={() => onDecrease(item._id)}>−</button>
               <span className="qty-num">{item.quantity}</span>
               <button className="qty-btn" onClick={() => onIncrease(item._id)}>+</button>
             </div>
+            {/* Line subtotal = price × quantity */}
             <p className="cart-item-subtotal">
               ${(item.price * item.quantity).toFixed(2)}
             </p>
@@ -286,7 +416,13 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
   );
 }
 
-function AdminPage({ users, carts, onLogout }) {
+// ─── AdminPage ─────────────────────────────────────────────────────────────────
+// Admin-only dashboard view. Accessible only after verifyAdmin middleware on backend.
+// Displays:
+//   - Summary stats (user count, cart item count, total cart value)
+//   - Full user list with role badges
+//   - All customers' cart contents across all accounts
+function AdminPage({ users, carts }) {
   return (
     <div className="page admin-page">
       <div className="admin-hero">
@@ -294,6 +430,7 @@ function AdminPage({ users, carts, onLogout }) {
         <p className="admin-sub">Overview of all users and their carts</p>
       </div>
 
+      {/* Summary stat cards — quick overview at a glance */}
       <div className="admin-stats">
         <div className="stat-card">
           <span className="stat-num">{users.length}</span>
@@ -304,6 +441,7 @@ function AdminPage({ users, carts, onLogout }) {
           <span className="stat-label">Cart Items</span>
         </div>
         <div className="stat-card">
+          {/* Aggregates total monetary value across all carts */}
           <span className="stat-num">
             ${carts.reduce((s, i) => s + (i.price || 0) * i.quantity, 0).toFixed(2)}
           </span>
@@ -311,6 +449,7 @@ function AdminPage({ users, carts, onLogout }) {
         </div>
       </div>
 
+      {/* User table — password field excluded by backend (.select("-password")) */}
       <h3>All Users</h3>
       <div className="admin-table">
         <div className="admin-thead">
@@ -322,6 +461,7 @@ function AdminPage({ users, carts, onLogout }) {
           <div key={u._id} className="admin-row">
             <span>{u.username}</span>
             <span>
+              {/* Role badge styled differently for admin vs user */}
               <span className={`role-badge ${u.role}`}>{u.role}</span>
             </span>
             <span className="mono">{u._id}</span>
@@ -329,6 +469,7 @@ function AdminPage({ users, carts, onLogout }) {
         ))}
       </div>
 
+      {/* Cart table — shows all items across every user's cart */}
       <h3>All Shopping Carts</h3>
       <div className="admin-table">
         <div className="admin-thead">
@@ -348,18 +489,24 @@ function AdminPage({ users, carts, onLogout }) {
   );
 }
 
-// ─── Main App ──────────────────────────────────────────────────────────────────
-
+// ─── App (Root Component) ──────────────────────────────────────────────────────
+// Manages all global state and API communication.
+// Renders the correct view based on auth state and user role:
+//   - Not logged in  → LoginPage
+//   - Admin user     → Navbar + AdminPage
+//   - Regular user   → Navbar + ShopPage or CartPage (tab-controlled)
 function App() {
-  const [products, setProducts] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [cart, setCart] = useState([]);
-  const [toast, setToast] = useState("");
-  const [user, setUser] = useState(null);
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [adminCarts, setAdminCarts] = useState([]);
-  const [activeTab, setActiveTab] = useState("shop");
+  const [products, setProducts] = useState([]);       // all products from MongoDB
+  const [searchText, setSearchText] = useState("");   // live search input value
+  const [cart, setCart] = useState([]);               // current user's cart items
+  const [toast, setToast] = useState("");             // toast notification message
+  const [user, setUser] = useState(null);             // logged-in user object (or null)
+  const [adminUsers, setAdminUsers] = useState([]);   // all users (admin only)
+  const [adminCarts, setAdminCarts] = useState([]);   // all cart items (admin only)
+  const [activeTab, setActiveTab] = useState("shop"); // "shop" | "cart"
 
+  // On mount: restore session from localStorage if token exists.
+  // This allows users to stay logged in after a page refresh.
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
@@ -372,17 +519,23 @@ function App() {
         fetchCart(parsedUser._id);
       }
     } else {
+      // Load products even without login so guests can browse
       fetchProducts();
     }
   }, []);
 
+  // Displays a toast for 2.2 seconds then clears it
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 2200);
   };
 
+  // Helper to retrieve JWT from localStorage for protected API requests
   const getToken = () => localStorage.getItem("token");
 
+  // ── API calls ────────────────────────────────────────────────────────────────
+
+  // Fetches all products from the backend (public endpoint, no auth required)
   const fetchProducts = () => {
     fetch("http://localhost:3000/products")
       .then((r) => r.json())
@@ -390,6 +543,7 @@ function App() {
       .catch(() => showToast("Failed to load products"));
   };
 
+  // Fetches the cart for a specific user by their MongoDB _id
   const fetchCart = (userId) => {
     fetch(`http://localhost:3000/cart?userId=${userId}`)
       .then((r) => r.json())
@@ -397,6 +551,8 @@ function App() {
       .catch(() => showToast("Failed to load cart"));
   };
 
+  // Fetches admin data — both requests include the JWT in Authorization header.
+  // Backend verifies the token and checks role === "admin" before responding.
   const fetchAdminData = () => {
     const token = getToken();
     const headers = { Authorization: `Bearer ${token}` };
@@ -408,6 +564,7 @@ function App() {
       .then(setAdminCarts);
   };
 
+  // Sends registration request; password is hashed server-side with bcrypt
   const handleRegister = async (username, password) => {
     const res = await fetch("http://localhost:3000/register", {
       method: "POST",
@@ -418,6 +575,8 @@ function App() {
     showToast(data.message || data.error);
   };
 
+  // Sends login request; on success stores JWT + user object in localStorage
+  // for session persistence across page refreshes.
   const handleLogin = async (username, password) => {
     const res = await fetch("http://localhost:3000/login", {
       method: "POST",
@@ -427,6 +586,7 @@ function App() {
     const data = await res.json();
     if (data.user && data.token) {
       setUser(data.user);
+      // Persist session so the user stays logged in on page refresh
       localStorage.setItem("user", JSON.stringify(data.user));
       localStorage.setItem("token", data.token);
       showToast("Welcome back, " + data.user.username + "!");
@@ -441,6 +601,7 @@ function App() {
     }
   };
 
+  // Clears all session data from state and localStorage on logout
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -452,6 +613,8 @@ function App() {
     showToast("Logged out successfully");
   };
 
+  // Adds a product to the cart (or increments quantity if already present).
+  // Backend handles the duplicate check — if item exists, it increments quantity.
   const addToCart = async (product) => {
     await fetch("http://localhost:3000/cart", {
       method: "POST",
@@ -466,6 +629,7 @@ function App() {
     fetchCart(user._id);
   };
 
+  // Sends a PUT request with action "increase" to increment quantity by 1
   const increaseQuantity = async (id) => {
     await fetch(`http://localhost:3000/cart/${id}`, {
       method: "PUT",
@@ -475,6 +639,7 @@ function App() {
     fetchCart(user._id);
   };
 
+  // Sends a PUT request with action "decrease"; backend auto-deletes if quantity hits 0
   const decreaseQuantity = async (id) => {
     await fetch(`http://localhost:3000/cart/${id}`, {
       method: "PUT",
@@ -484,14 +649,16 @@ function App() {
     fetchCart(user._id);
   };
 
+  // Hard-deletes a cart item by its MongoDB _id (called after user confirms dialog)
   const removeFromCart = async (id) => {
     await fetch(`http://localhost:3000/cart/${id}`, { method: "DELETE" });
     showToast("Item removed");
     fetchCart(user._id);
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ───────────────────────────────────────────────────────────────────
 
+  // Guard: show login page if no user is authenticated
   if (!user) {
     return (
       <LoginPage
@@ -502,6 +669,7 @@ function App() {
     );
   }
 
+  // Admin view: dashboard with user and cart management
   if (user.role === "admin") {
     return (
       <>
@@ -512,6 +680,7 @@ function App() {
     );
   }
 
+  // Regular user view: shop or cart, toggled via Navbar tabs
   return (
     <>
       <Navbar
