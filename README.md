@@ -1,16 +1,21 @@
 # EasyBuy 🛍
 
-A full-stack e-commerce shopping cart application built with React, Node.js, Express, and MongoDB. Users can browse products, manage their shopping cart, and administrators can monitor all user accounts and cart activity.
+A full-stack e-commerce shopping cart application built with React, Node.js, Express, and MongoDB. Users can browse and search products, manage their shopping cart, and administrators can monitor all user accounts and cart activity.
 
 ---
 
 ## Features
 
-- **User Authentication** — Register and login with password hashing (bcrypt) and JWT-based session management
+- **User Authentication** — Register and login with password hashing (bcrypt) and JWT-based session management; session persists across page refreshes via localStorage
+- **Role-Based Access Control** — Regular users access the shop and cart; admin users access a full dashboard with all user and cart data
 - **Live Search** — Real-time product filtering as the user types, no page reload required
-- **Shopping Cart** — Add, increase, decrease, and remove items; persistent per user in MongoDB
-- **Role-Based Access Control** — Regular users see the shop and their cart; admin users see a dashboard with all users and all carts
+- **Category Filter** — Filter products by category (Fashion, Electronics, Home, Beauty) combined with live search
+- **Shopping Cart** — Add, increase, decrease, and remove items; persistent per user in MongoDB; shows per-item subtotal and cart total
+- **Confirm Dialog** — Custom modal confirmation before removing a cart item (replaces browser `window.confirm`)
+- **Toast Notifications** — Non-intrusive bottom-right notifications for add, remove, login, and logout actions
+- **Admin Dashboard** — Summary stats (total users, cart items, total value) plus full user list and all cart contents
 - **Single-Page Application** — Built with React; all views rendered dynamically without full page reloads
+- **Responsive Design** — Adapts to mobile and desktop screen sizes
 
 ---
 
@@ -22,6 +27,7 @@ A full-stack e-commerce shopping cart application built with React, Node.js, Exp
 | Backend | Node.js, Express |
 | Database | MongoDB (Mongoose) |
 | Auth | JWT, bcrypt |
+| Styling | Custom CSS (Morandi warm colour scheme) |
 
 ---
 
@@ -29,21 +35,25 @@ A full-stack e-commerce shopping cart application built with React, Node.js, Exp
 
 ```
 easybuy/
-├── frontend/               # React frontend (Vite)
+├── frontend/                   # React frontend (Vite)
 │   ├── src/
-│   │   ├── App.jsx         # Main app component (routing, state, all views)
-│   │   └── App.css         # Global styles
+│   │   ├── App.jsx             # All React components and app logic
+│   │   └── App.css             # Global styles (Morandi colour system)
+│   ├── public/
+│   │   └── image/              # Product images
 │   ├── index.html
 │   └── package.json
 │
-├── backend/                # Node.js + Express API
-│   ├── server.js           # Entry point, all routes defined here
-│   ├── models/             # Mongoose models
-│   │   ├── User.js         # User schema (username, password, role)
-│   │   ├── Product.js      # Product schema (name, price, image)
-│   │   └── CartItem.js     # Cart schema (userId, productId, quantity)
+├── backend/                    # Node.js + Express API
+│   ├── server.js               # Entry point — all routes and middleware
+│   ├── models/
+│   │   ├── User.js             # User schema (username, password, role)
+│   │   ├── Product.js          # Product schema (name, price, category, image)
+│   │   └── Cart.js             # Cart item schema (userId, productId, quantity)
+│   ├── seedProducts.js         # Script to seed initial product data
 │   └── package.json
 │
+├── .gitignore
 └── README.md
 ```
 
@@ -86,7 +96,13 @@ node server.js
 
 The API will be available at `http://localhost:3000`.
 
-### 3. Start the frontend
+### 3. Seed the database (first time only)
+
+```bash
+node seedProducts.js
+```
+
+### 4. Start the frontend
 
 ```bash
 cd frontend
@@ -103,35 +119,36 @@ Open `http://localhost:5173` in your browser.
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
 | POST | `/register` | Register a new user | — |
-| POST | `/login` | Login, returns JWT | — |
+| POST | `/login` | Login, returns JWT token | — |
 | GET | `/products` | Get all products | — |
 | GET | `/cart?userId=` | Get cart items for a user | — |
-| POST | `/cart` | Add item to cart | — |
-| PUT | `/cart/:id` | Increase or decrease quantity | — |
+| POST | `/cart` | Add item to cart (increments if exists) | — |
+| PUT | `/cart/:id` | Increase or decrease item quantity | — |
 | DELETE | `/cart/:id` | Remove item from cart | — |
-| GET | `/admin/users` | Get all users | Admin JWT |
-| GET | `/admin/carts` | Get all cart items | Admin JWT |
+| GET | `/admin/users` | Get all users (passwords excluded) | Admin JWT |
+| GET | `/admin/carts` | Get all cart items across all users | Admin JWT |
 
 ---
 
-## Database
+## Database Collections
 
-The application uses three MongoDB collections corresponding to the three CRUD entities:
+The application uses three MongoDB collections corresponding to the three CRUD entities required by the assignment:
 
-- **users** — stores registered accounts with hashed passwords and roles
-- **products** — stores product catalogue (pre-seeded)
-- **cartitems** — stores each user's cart with product reference and quantity
+- **users** — registered accounts with hashed passwords and roles (`user` / `admin`)
+- **products** — product catalogue with name, price, category, and image path
+- **cartitems** — each user's cart entries with product reference and quantity
 
-A sample database export can be found in the `/backend/data/` folder (`.json` files importable with `mongoimport`).
+A sample database export is available in the `/backend/` folder as JSON files importable with `mongoimport`.
 
 ---
 
-## Demo Account
+## Demo Accounts
 
 | Role | Username | Password |
 |------|----------|----------|
 | Admin | `admin` | `Admin123!` |
-| User | `testuser` | `Test123!` |
+
+Register any username/password to create a regular user account.
 
 ---
 
@@ -141,9 +158,10 @@ This project was completed individually by **Zikun Liu**.
 
 | File | Description |
 |------|-------------|
-| `frontend/src/App.jsx` | All React components and frontend logic |
-| `frontend/src/App.css` | All styles |
-| `backend/server.js` | All API routes and middleware |
-| `backend/models/User.js` | User Mongoose model |
-| `backend/models/Product.js` | Product Mongoose model |
-| `backend/models/CartItem.js` | Cart item Mongoose model |
+| `frontend/src/App.jsx` | All React components: Navbar, LoginPage, ShopPage, ProductCard, CartPage, AdminPage, Toast, ConfirmDialog |
+| `frontend/src/App.css` | All styles including Morandi colour system, responsive layout, animations |
+| `backend/server.js` | All API routes, JWT middleware, bcrypt password hashing, role-based access control |
+| `backend/models/User.js` | Mongoose User model |
+| `backend/models/Product.js` | Mongoose Product model |
+| `backend/models/Cart.js` | Mongoose Cart item model |
+| `backend/seedProducts.js` | Database seeding script |
