@@ -21,6 +21,11 @@
 
 import { useEffect, useState } from "react";
 import "./App.css";
+import {
+  FiShoppingBag, FiShoppingCart, FiLogOut, FiUser, FiLock,
+  FiGrid, FiTag, FiMonitor, FiHome, FiFeather,
+  FiUsers, FiDollarSign, FiTrash2, FiPlus, FiMinus, FiSearch
+} from "react-icons/fi";
 
 // ─── Toast ─────────────────────────────────────────────────────────────────────
 // Displays a brief notification at the bottom-right of the screen.
@@ -76,13 +81,13 @@ function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
             className={`tab-btn ${activeTab === "shop" ? "active" : ""}`}
             onClick={() => onTabChange("shop")}
           >
-            Shop
+            <FiShoppingBag /> Shop
           </button>
           <button
             className={`tab-btn ${activeTab === "cart" ? "active" : ""}`}
             onClick={() => onTabChange("cart")}
           >
-            Cart
+            <FiShoppingCart /> Cart
             {/* Badge shows total quantity across all cart items */}
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </button>
@@ -92,10 +97,10 @@ function Navbar({ user, cartCount, onLogout, onTabChange, activeTab }) {
       {user && (
         <div className="navbar-right">
           <span className="welcome-text">
-            {user.role === "admin" ? "👑" : "👤"} {user.username}
+            {user.role === "admin" ? "👑" : <FiUser style={{verticalAlign:"middle"}}/>} {user.username}
           </span>
           <button className="btn-logout" onClick={onLogout}>
-            Logout
+            <FiLogOut /> Logout
           </button>
         </div>
       )}
@@ -180,38 +185,47 @@ function LoginPage({ onLogin, onRegister, toast }) {
           {/* Username field — shared by both modes */}
           <div className="form-group">
             <label>Username</label>
-            <input
-              type="text"
-              placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (isLogin ? handleLogin() : handleRegister())}
-            />
+            <div className="input-wrap">
+              <FiUser className="input-icon" />
+              <input
+                type="text"
+                placeholder="Enter your username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (isLogin ? handleLogin() : handleRegister())}
+              />
+            </div>
           </div>
 
           {/* Password field */}
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && (isLogin ? handleLogin() : handleRegister())}
-            />
+            <div className="input-wrap">
+              <FiLock className="input-icon" />
+              <input
+                type="password"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && (isLogin ? handleLogin() : handleRegister())}
+              />
+            </div>
           </div>
 
           {/* Confirm password — only shown in Register mode */}
           {!isLogin && (
             <div className="form-group">
               <label>Confirm Password</label>
-              <input
-                type="password"
-                placeholder="Re-enter your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleRegister()}
-              />
+              <div className="input-wrap">
+                <FiLock className="input-icon" />
+                <input
+                  type="password"
+                  placeholder="Re-enter your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleRegister()}
+                />
+              </div>
             </div>
           )}
 
@@ -313,6 +327,15 @@ function ProductCard({ product, onAddToCart, loggedIn }) {
   );
 }
 
+// Category icon map — each category gets a matching react-icon
+const CATEGORY_ICONS = {
+  All: <FiGrid />,
+  Fashion: <FiTag />,
+  Electronics: <FiMonitor />,
+  Home: <FiHome />,
+  Beauty: <FiFeather />,
+};
+
 // Available product categories — "All" is a virtual option that shows everything
 const CATEGORIES = ["All", "Fashion", "Electronics", "Home", "Beauty"];
 
@@ -350,14 +373,14 @@ function ShopPage({ products, searchText, onSearchChange, onAddToCart, user }) {
               className={`cat-btn ${activeCategory === cat ? "active" : ""}`}
               onClick={() => setActiveCategory(cat)}
             >
-              {cat}
+              {CATEGORY_ICONS[cat]} {cat}
             </button>
           ))}
         </div>
 
         {/* Live search — filters in real-time on every keystroke via onChange */}
         <div className="search-wrap">
-          <span className="search-icon">🔍</span>
+          <FiSearch className="search-icon" />
           <input
             className="search-input"
             placeholder="Search products..."
@@ -457,16 +480,16 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
             </div>
             {/* Quantity controls: decrease / display / increase */}
             <div className="cart-controls">
-              <button className="qty-btn" onClick={() => onDecrease(item._id)}>−</button>
+              <button className="qty-btn" onClick={() => onDecrease(item._id)}><FiMinus /></button>
               <span className="qty-num">{item.quantity}</span>
-              <button className="qty-btn" onClick={() => onIncrease(item._id)}>+</button>
+              <button className="qty-btn" onClick={() => onIncrease(item._id)}><FiPlus /></button>
             </div>
             {/* Line subtotal = price × quantity */}
             <p className="cart-item-subtotal">
               ${(item.price * item.quantity).toFixed(2)}
             </p>
             <button className="btn-remove" onClick={() => handleRemoveClick(item)}>
-              🗑
+              <FiTrash2 />
             </button>
           </div>
         ))}
@@ -496,14 +519,17 @@ function AdminPage({ users, carts }) {
       {/* Summary stat cards — quick overview at a glance */}
       <div className="admin-stats">
         <div className="stat-card">
+          <FiUsers className="stat-icon" />
           <span className="stat-num">{users.length}</span>
           <span className="stat-label">Total Users</span>
         </div>
         <div className="stat-card">
+          <FiShoppingCart className="stat-icon" />
           <span className="stat-num">{carts.length}</span>
           <span className="stat-label">Cart Items</span>
         </div>
         <div className="stat-card">
+          <FiDollarSign className="stat-icon" />
           {/* Aggregates total monetary value across all carts */}
           <span className="stat-num">
             ${carts.reduce((s, i) => s + (i.price || 0) * i.quantity, 0).toFixed(2)}
