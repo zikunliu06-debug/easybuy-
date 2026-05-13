@@ -504,11 +504,23 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
 
 // ─── AdminPage ─────────────────────────────────────────────────────────────────
 // Admin-only dashboard view. Accessible only after verifyAdmin middleware on backend.
-// Displays:
-//   - Summary stats (user count, cart item count, total cart value)
-//   - Full user list with role badges
-//   - All customers' cart contents across all accounts
+// - Clicking a user row filters the cart table to show only that user's items.
+// - Clicking the same user again (or "All Users") resets to show all carts.
+// - If a selected user has no cart items, shows an empty state message.
 function AdminPage({ users, carts }) {
+  // selectedUser: null = show all, otherwise = username string of selected user
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  // Toggle: clicking the same user deselects; clicking a new user selects them
+  const handleUserClick = (username) => {
+    setSelectedUser((prev) => (prev === username ? null : username));
+  };
+
+  // Filter cart items based on selected user — null means show all
+  const filteredCarts = selectedUser
+    ? carts.filter((item) => item.username === selectedUser)
+    : carts;
+
   return (
     <div className="page admin-page">
       <div className="admin-hero">
@@ -516,7 +528,7 @@ function AdminPage({ users, carts }) {
         <p className="admin-sub">Overview of all users and their carts</p>
       </div>
 
-      {/* Summary stat cards — quick overview at a glance */}
+      {/* Summary stat cards */}
       <div className="admin-stats">
         <div className="stat-card">
           <FiUsers className="stat-icon" />
@@ -530,7 +542,6 @@ function AdminPage({ users, carts }) {
         </div>
         <div className="stat-card">
           <FiDollarSign className="stat-icon" />
-          {/* Aggregates total monetary value across all carts */}
           <span className="stat-num">
             ${carts.reduce((s, i) => s + (i.price || 0) * i.quantity, 0).toFixed(2)}
           </span>
@@ -538,8 +549,16 @@ function AdminPage({ users, carts }) {
         </div>
       </div>
 
-      {/* User table — password field excluded by backend (.select("-password")) */}
-      <h3>All Users</h3>
+      {/* User table — click a row to filter carts below */}
+      <div className="admin-section-header">
+        <h3>All Users</h3>
+        {/* Show reset hint when a user is selected */}
+        {selectedUser && (
+          <button className="admin-reset-btn" onClick={() => setSelectedUser(null)}>
+            ✕ Clear filter
+          </button>
+        )}
+      </div>
       <div className="admin-table">
         <div className="admin-thead">
           <span>Username</span>
@@ -547,10 +566,17 @@ function AdminPage({ users, carts }) {
           <span>User ID</span>
         </div>
         {users.map((u) => (
-          <div key={u._id} className="admin-row">
-            <span>{u.username}</span>
+          // Clicking a user row filters the cart table to that user
+          <div
+            key={u._id}
+            className={`admin-row admin-row-clickable ${selectedUser === u.username ? "admin-row-selected" : ""}`}
+            onClick={() => handleUserClick(u.username)}
+          >
+            <span className="admin-row-name">
+              {u.username}
+              {selectedUser === u.username && <span className="admin-viewing-badge">viewing</span>}
+            </span>
             <span>
-              {/* Role badge styled differently for admin vs user */}
               <span className={`role-badge ${u.role}`}>{u.role}</span>
             </span>
             <span className="mono">{u._id}</span>
@@ -558,21 +584,31 @@ function AdminPage({ users, carts }) {
         ))}
       </div>
 
-      {/* Cart table — shows all items across every user's cart */}
-      <h3>All Shopping Carts</h3>
+      {/* Cart table — filtered by selected user or shows all */}
+      <h3>
+        {selectedUser ? `${selectedUser}'s Cart` : "All Shopping Carts"}
+      </h3>
       <div className="admin-table">
         <div className="admin-thead">
           <span>Customer</span>
           <span>Product</span>
           <span>Quantity</span>
         </div>
-        {carts.map((item) => (
-          <div key={item._id} className="admin-row">
-            <span>{item.username}</span>
-            <span>{item.name}</span>
-            <span>{item.quantity}</span>
+        {filteredCarts.length === 0 ? (
+          // Empty state when selected user has no cart items
+          <div className="admin-cart-empty">
+            <FiShoppingCart style={{ fontSize: 28, color: "#94A3B8", marginBottom: 8 }} />
+            <p>{selectedUser ? `${selectedUser}'s cart is empty.` : "No cart items found."}</p>
           </div>
-        ))}
+        ) : (
+          filteredCarts.map((item) => (
+            <div key={item._id} className="admin-row">
+              <span>{item.username}</span>
+              <span>{item.name}</span>
+              <span>{item.quantity}</span>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

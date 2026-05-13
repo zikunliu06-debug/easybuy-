@@ -768,6 +768,71 @@ body {
 
 .cart-footer strong { color: #1E293B; font-size: 22px; }
 
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.admin-reset-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--gray-200);
+  background: var(--bg-card);
+  color: var(--gray-600);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+
+.admin-reset-btn:hover {
+  border-color: var(--red);
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.admin-row-clickable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.admin-row-clickable:hover {
+  background: #EFF6FF;
+}
+
+.admin-row-selected {
+  background: #DBEAFE !important;
+  border-left: 3px solid #2563EB;
+}
+
+.admin-row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-viewing-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: #2563EB;
+  color: #fff;
+  letter-spacing: 0.03em;
+}
+
+.admin-cart-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--gray-400);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 /* ── Admin ───────────────────────────────────────────────────── */
 .admin-page { max-width: 900px; margin: 0 auto; }
 
