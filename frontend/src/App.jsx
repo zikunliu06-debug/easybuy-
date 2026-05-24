@@ -507,13 +507,28 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
 // - Clicking a user row filters the cart table to show only that user's items.
 // - Clicking the same user again (or "All Users") resets to show all carts.
 // - If a selected user has no cart items, shows an empty state message.
-function AdminPage({ users = [], carts = [] }) {
+function AdminPage({ users = [], carts = [], onDeleteUser }) {
   // selectedUser: null = show all, otherwise = username string of selected user
   const [selectedUser, setSelectedUser] = useState(null);
+  // confirmDelete: stores the user object pending deletion
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   // Toggle: clicking the same user deselects; clicking a new user selects them
   const handleUserClick = (username) => {
     setSelectedUser((prev) => (prev === username ? null : username));
+  };
+
+  // Opens delete confirmation for a user (stops row click from also firing)
+  const handleDeleteClick = (e, user) => {
+    e.stopPropagation();
+    setConfirmDelete(user);
+  };
+
+  // Confirms deletion — calls parent handler then clears state
+  const handleDeleteConfirm = () => {
+    onDeleteUser(confirmDelete._id, confirmDelete.username);
+    if (selectedUser === confirmDelete.username) setSelectedUser(null);
+    setConfirmDelete(null);
   };
 
   // Filter cart items based on selected user — null means show all
@@ -523,6 +538,24 @@ function AdminPage({ users = [], carts = [] }) {
 
   return (
     <div className="page admin-page">
+
+      {/* Delete user confirmation dialog */}
+      {confirmDelete && (
+        <div className="dialog-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="dialog-box" onClick={(e) => e.stopPropagation()}>
+            <div className="dialog-icon">🗑</div>
+            <h3 className="dialog-title">Delete User</h3>
+            <p className="dialog-msg">
+              Delete <strong>{confirmDelete.username}</strong> and all their cart items? This cannot be undone.
+            </p>
+            <div className="dialog-btns">
+              <button className="dialog-btn-cancel" onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button className="dialog-btn-confirm" onClick={handleDeleteConfirm}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="admin-hero">
         <h2>Admin Dashboard</h2>
         <p className="admin-sub">Overview of all users and their carts</p>
@@ -549,10 +582,9 @@ function AdminPage({ users = [], carts = [] }) {
         </div>
       </div>
 
-      {/* User table — click a row to filter carts below */}
+      {/* User table — click row to filter, click trash to delete */}
       <div className="admin-section-header">
         <h3>All Users</h3>
-        {/* Show reset hint when a user is selected */}
         {selectedUser && (
           <button className="admin-reset-btn" onClick={() => setSelectedUser(null)}>
             ✕ Clear filter
@@ -560,16 +592,16 @@ function AdminPage({ users = [], carts = [] }) {
         )}
       </div>
       <div className="admin-table">
-        <div className="admin-thead">
+        <div className="admin-thead admin-thead-4">
           <span>Username</span>
           <span>Role</span>
           <span>User ID</span>
+          <span></span>
         </div>
         {users.map((u) => (
-          // Clicking a user row filters the cart table to that user
           <div
             key={u._id}
-            className={`admin-row admin-row-clickable ${selectedUser === u.username ? "admin-row-selected" : ""}`}
+            className={`admin-row admin-row-4 admin-row-clickable ${selectedUser === u.username ? "admin-row-selected" : ""}`}
             onClick={() => handleUserClick(u.username)}
           >
             <span className="admin-row-name">
@@ -580,6 +612,18 @@ function AdminPage({ users = [], carts = [] }) {
               <span className={`role-badge ${u.role}`}>{u.role}</span>
             </span>
             <span className="mono">{u._id}</span>
+            {/* Delete button — hidden for admin account */}
+            <span>
+              {u.role !== "admin" && (
+                <button
+                  className="admin-delete-btn"
+                  onClick={(e) => handleDeleteClick(e, u)}
+                  title="Delete user"
+                >
+                  <FiTrash2 />
+                </button>
+              )}
+            </span>
           </div>
         ))}
       </div>
@@ -678,15 +722,33 @@ function App() {
 
   // Fetches admin data — both requests include the JWT in Authorization header.
   // Backend verifies the token and checks role === "admin" before responding.
-  const fetchAdminData = () => {
+  // If token is expired (403), auto-logout to prevent stuck white screen.
+  const fetchAdminData = async () => {
     const token = getToken();
     const headers = { Authorization: `Bearer ${token}` };
-    fetch("http://localhost:3000/admin/users", { headers })
-      .then((r) => r.json())
-      .then(setAdminUsers);
-    fetch("http://localhost:3000/admin/carts", { headers })
-      .then((r) => r.json())
-      .then(setAdminCarts);
+
+    try {
+      const [usersRes, cartsRes] = await Promise.all([
+        fetch("http://localhost:3000/admin/users", { headers }),
+        fetch("http://localhost:3000/admin/carts", { headers }),
+      ]);
+
+      // If token expired or invalid, force logout instead of crashing
+      if (usersRes.status === 403 || usersRes.status === 401) {
+        handleLogout();
+        showToast("Session expired. Please log in again.");
+        return;
+      }
+
+      const usersData = await usersRes.json();
+      const cartsData = await cartsRes.json();
+
+      // Only set state if response is actually an array
+      setAdminUsers(Array.isArray(usersData) ? usersData : []);
+      setAdminCarts(Array.isArray(cartsData) ? cartsData : []);
+    } catch (err) {
+      showToast("Failed to load admin data");
+    }
   };
 
   // Sends registration request; password is hashed server-side with bcrypt
@@ -726,7 +788,16 @@ function App() {
     }
   };
 
-  // Clears all session data from state and localStorage on logout
+  // Deletes a user and all their cart items via the admin endpoint
+  const deleteUser = async (userId, username) => {
+    const token = getToken();
+    await fetch(`http://localhost:3000/admin/users/${userId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    showToast(`${username} deleted`);
+    fetchAdminData();
+  };
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem("user");
@@ -799,7 +870,7 @@ function App() {
     return (
       <>
         <Navbar user={user} onLogout={handleLogout} />
-        <AdminPage users={adminUsers} carts={adminCarts} />
+        <AdminPage users={adminUsers} carts={adminCarts} onDeleteUser={deleteUser} />
         <Toast message={toast} />
       </>
     );

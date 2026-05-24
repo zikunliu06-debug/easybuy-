@@ -768,6 +768,34 @@ body {
 
 .cart-footer strong { color: #1E293B; font-size: 22px; }
 
+.admin-thead-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr 40px;
+}
+
+.admin-row-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr 40px;
+  align-items: center;
+}
+
+.admin-delete-btn {
+  background: none;
+  border: none;
+  color: var(--gray-400);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-delete-btn:hover {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
 .admin-section-header {
   display: flex;
   align-items: center;

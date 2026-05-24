@@ -38,7 +38,7 @@ async function createDefaultAdmin() {
   }
 }
 
-// JWT middleware
+// JWT middleware — verifies the token from Authorization header
 function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;
 
@@ -57,6 +57,7 @@ function verifyToken(req, res, next) {
   }
 }
 
+// Admin middleware — only allows users with role === "admin"
 function verifyAdmin(req, res, next) {
   if (req.user.role !== "admin") {
     return res.status(403).json({ error: "Admin access required" });
@@ -65,9 +66,12 @@ function verifyAdmin(req, res, next) {
   next();
 }
 
+// Health check
 app.get("/", (req, res) => {
   res.send("EasyBuy backend is running!");
 });
+
+// ── Products ──────────────────────────────────────────────────────────────────
 
 app.get("/products", async (req, res) => {
   try {
@@ -77,6 +81,8 @@ app.get("/products", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch products" });
   }
 });
+
+// ── Cart ──────────────────────────────────────────────────────────────────────
 
 app.get("/cart", async (req, res) => {
   try {
@@ -98,6 +104,7 @@ app.post("/cart", async (req, res) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
+    // If item already in cart, increment quantity instead of creating duplicate
     const existingItem = await Cart.findOne({ productId, userId });
 
     if (existingItem) {
@@ -140,6 +147,7 @@ app.put("/cart/:id", async (req, res) => {
     if (action === "decrease") {
       cartItem.quantity -= 1;
 
+      // Auto-delete item if quantity drops to zero
       if (cartItem.quantity <= 0) {
         await Cart.findByIdAndDelete(req.params.id);
         return res.json({ message: "Cart item removed" });
@@ -161,6 +169,8 @@ app.delete("/cart/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to delete cart item" });
   }
 });
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
 
 app.post("/register", async (req, res) => {
   try {
@@ -204,6 +214,7 @@ app.post("/login", async (req, res) => {
       return res.status(401).json({ error: "Wrong password" });
     }
 
+    // Sign JWT with user info — expires in 1 hour
     const token = jwt.sign(
       {
         id: user._id,
@@ -228,6 +239,9 @@ app.post("/login", async (req, res) => {
   }
 });
 
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+// Get all users — passwords excluded for security
 app.get("/admin/users", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const users = await User.find().select("-password");
@@ -237,12 +251,40 @@ app.get("/admin/users", verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
+// Get all cart items across every user
 app.get("/admin/carts", verifyToken, verifyAdmin, async (req, res) => {
   try {
     const carts = await Cart.find();
     res.json(carts);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch all carts" });
+  }
+});
+
+// Delete a user and all their cart items — admin only
+// Uses Promise.all to delete both simultaneously for efficiency
+app.delete("/admin/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Prevent admin from accidentally deleting their own account
+    if (user.username === "admin") {
+      return res.status(403).json({ error: "Cannot delete the admin account" });
+    }
+
+    // Delete user and all their cart items in parallel
+    await Promise.all([
+      User.findByIdAndDelete(req.params.id),
+      Cart.deleteMany({ userId: req.params.id })
+    ]);
+
+    res.json({ message: "User and their cart deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete user" });
   }
 });
 
