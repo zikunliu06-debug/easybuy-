@@ -6,14 +6,15 @@ A full-stack e-commerce shopping cart application built with React, Node.js, Exp
 
 ## Features
 
-- **User Authentication** — Register and login with password hashing (bcrypt) and JWT-based session management; session persists across page refreshes via localStorage
+- **User Authentication** — Separate login and register tabs with password hashing (bcrypt) and JWT-based session management; session persists across page refreshes via localStorage
 - **Role-Based Access Control** — Regular users access the shop and cart; admin users access a full dashboard with all user and cart data
 - **Live Search** — Real-time product filtering as the user types, no page reload required
-- **Category Filter** — Filter products by category (Fashion, Electronics, Home, Beauty) combined with live search
+- **Category Filter** — Filter products by category (Fashion, Electronics, Home, Beauty) combined with live search simultaneously
 - **Shopping Cart** — Add, increase, decrease, and remove items; persistent per user in MongoDB; shows per-item subtotal and cart total
 - **Confirm Dialog** — Custom modal confirmation before removing a cart item (replaces browser `window.confirm`)
 - **Toast Notifications** — Non-intrusive bottom-right notifications for add, remove, login, and logout actions
-- **Admin Dashboard** — Summary stats (total users, cart items, total value) plus full user list and all cart contents
+- **Admin Dashboard** — Summary stats (total users, cart items, total value) plus full user list; click any user to filter and view their individual cart; empty cart state shown if user has no items
+- **React Icons** — Feather icons used throughout navbar, login form, category tabs, cart controls, and admin dashboard
 - **Single-Page Application** — Built with React; all views rendered dynamically without full page reloads
 - **Responsive Design** — Adapts to mobile and desktop screen sizes
 
@@ -27,7 +28,8 @@ A full-stack e-commerce shopping cart application built with React, Node.js, Exp
 | Backend | Node.js, Express |
 | Database | MongoDB (Mongoose) |
 | Auth | JWT, bcrypt |
-| Styling | Custom CSS (Morandi warm colour scheme) |
+| Icons | react-icons (Feather) |
+| Styling | Custom CSS (Modern Navy colour scheme) |
 
 ---
 
@@ -38,7 +40,7 @@ easybuy/
 ├── frontend/                   # React frontend (Vite)
 │   ├── src/
 │   │   ├── App.jsx             # All React components and app logic
-│   │   └── App.css             # Global styles (Morandi colour system)
+│   │   └── App.css             # Global styles (Modern Navy colour system, responsive layout)
 │   ├── public/
 │   │   └── image/              # Product images
 │   ├── index.html
@@ -158,8 +160,8 @@ This project was completed individually by **Zikun Liu**.
 
 | File | Description |
 |------|-------------|
-| `frontend/src/App.jsx` | All React components: Navbar, LoginPage, ShopPage, ProductCard, CartPage, AdminPage, Toast, ConfirmDialog |
-| `frontend/src/App.css` | All styles including Morandi colour system, responsive layout, animations |
+| `frontend/src/App.jsx` | All React components: Navbar, LoginPage, ShopPage, ProductCard, StarRating, CartPage, AdminPage, Toast, ConfirmDialog |
+| `frontend/src/App.css` | All styles including Modern Navy colour system, responsive layout, animations |
 | `backend/server.js` | All API routes, JWT middleware, bcrypt password hashing, role-based access control |
 | `backend/models/User.js` | Mongoose User model |
 | `backend/models/Product.js` | Mongoose Product model |
