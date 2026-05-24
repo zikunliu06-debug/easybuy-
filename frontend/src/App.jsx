@@ -507,7 +507,7 @@ function CartPage({ cart, onIncrease, onDecrease, onRemove }) {
 // - Clicking a user row filters the cart table to show only that user's items.
 // - Clicking the same user again (or "All Users") resets to show all carts.
 // - If a selected user has no cart items, shows an empty state message.
-function AdminPage({ users, carts }) {
+function AdminPage({ users = [], carts = [] }) {
   // selectedUser: null = show all, otherwise = username string of selected user
   const [selectedUser, setSelectedUser] = useState(null);
 
